@@ -1,6 +1,16 @@
-# Get app info of google store and itunes
+# Store Info
 
-The class get the info more important of an app
+The class get the info more important of an app from google play or itunes
+
+## Return info
+
+* title
+* description
+* icon
+* images
+* videos
+* avg
+* num_votes
 
 ## Running the tests
 

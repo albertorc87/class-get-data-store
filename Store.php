@@ -70,10 +70,9 @@
                 'description' => '',
                 'icon'        => '',
                 'images'      => '',
-                'video'       => '',
-                'type'        => 'android',
-                'rank_avg'    => '',
-                'rank_votes'  => ''
+                'videos'      => '',
+                'avg'         => '',
+                'num_votes'   => ''
             ];
 
             if (preg_match('!id=.main-title.>(?<title>[^-–]+)(-|–)!sm', $res['content'], $m)) {
@@ -100,19 +99,19 @@
             }
 
             if (preg_match('!data-trailer-url=.(?<video>[^\'\"]+).!sm', $res['content'], $m)) {
-                $data['video'] = $m['video'];
+                $data['videos'] = $m['video'];
             }
 
             if (preg_match('!itemprop=.ratingValue. content=.(?<avg>[^\'\"]+).!sm', $res['content'], $m)) {
-                $data['rank_avg'] = round(str_replace(',', '.', $m['avg']), 1);
+                $data['avg'] = round(str_replace(',', '.', $m['avg']), 1);
             } elseif (preg_match('!<div class=.BHMmbe. aria-label=.[^\'\"]+.>(?<avg>[^\'\"]+)</div>!sm', $res['content'], $m)) {
-                $data['rank_avg'] = round(str_replace(',', '.', $m['avg']), 1);
+                $data['avg'] = round(str_replace(',', '.', $m['avg']), 1);
             }
 
             if (preg_match('!itemprop=.ratingCount. content=.(?<user_rating>[^\'\"]+).!sm', $res['content'], $m)) {
-                $data['rank_votes'] = $m['user_rating'];
+                $data['num_votes'] = $m['user_rating'];
             } elseif (preg_match('!<span class=.AYi5wd TBRnV.><span class=.. aria-label=.[^\'\"]+.>(?<user_rating>[^<]+)</span>!sm', $res['content'], $m)) {
-                $data['rank_votes'] = str_replace(',', '', $m['user_rating']);
+                $data['num_votes'] = str_replace(',', '', $m['user_rating']);
             }
 
             // Revisamos si se han rellenado todos los campos pq pueden haber cambiado algo
@@ -187,10 +186,9 @@
                 'images'        => array_merge($info['screenshotUrls'], $info['ipadScreenshotUrls']),
                 'images_iphone' => $info['screenshotUrls'],
                 'images_ipad'   => $info['ipadScreenshotUrls'],
-                'video'         => '',
-                'type'          => 'ios',
-                'rank_avg'      => $info['averageUserRating'],
-                'rank_votes'    => $info['userRatingCount']
+                'videos'        => '',
+                'avg'           => $info['averageUserRating'],
+                'num_votes'     => $info['userRatingCount']
             ];
 
             return [ 'status' => 1, 'data' => $data, 'msg' => 'Success' ];
