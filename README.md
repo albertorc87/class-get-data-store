@@ -1,8 +1,8 @@
-#Get app info of google store and itunes
+# Get app info of google store and itunes
 
 The class get the info more important of an app
 
-##Running the tests
+## Running the tests
 
 The file test_store.php you can use for testing the class by terminal.
 
