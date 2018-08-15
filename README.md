@@ -1,6 +1,6 @@
 # Store Info
 
-The class get the info more important of an app from google play or itunes
+The class get the info more important of an app from google play or itunes by url app.
 
 ## Return info
 
@@ -14,7 +14,7 @@ The class get the info more important of an app from google play or itunes
 
 ## Running the tests
 
-The file test_store.php you can use for testing the class by terminal.
+The file test_store.php you can use for testing the class by terminal. You have to pass like argument the url of the app.
 
 Examples:
 
