@@ -9,6 +9,12 @@
 
     class Store
     {
+
+        /**  
+         * Url for use the api for itunes
+         */
+        private const API_ITUNES = 'http://ax.itunes.apple.com/WebObjects/MZStoreServices.woa/wa/wsLookup?id=';
+
         /**
          * Text of the mail message
          *
@@ -23,19 +29,19 @@
             $country = strtolower($country);
 
             if (empty($url) || !is_string($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
-                return [ 'status' => 0, 'data' => [], 'msg' => 'The format for this url is not valid: ' . $url ];
+                return self::response(false, 'The format for this url is not valid: ' . $url);
             }
 
-            if (preg_match('!play.google!', $url)) {
+            if (preg_match('/play.google/', $url)) {
                 return self::dataGoogle($url, $country, $country_lang);
-            } elseif (preg_match('!itunes.apple!', $url)) {
+            } elseif (preg_match('/(itunes|apps).apple/', $url)) {
                 return self::dataItunes($url, $country);
             } else {
-                return [ 'status' => 0, 'data' => [], 'msg' => 'The url isn\'t play google or itunes' ];
+                return self::response(false, 'The url isn\'t play google or itunes');
             }
         }
 
-        private static function dataGoogle($url, $country, $country_lang)
+        private static function dataGoogle($google_url, $user_country, $country_lang)
         {
             $language = '';
 
@@ -43,25 +49,24 @@
                 $language = '&hl=' . $country_lang;
             }
             else {
-                $language = '&hl=' . $country;
+                $language = '&hl=' . $user_country;
             }
-            
-            $res = self::simpleCallCurl($url . '&gl=' . $country . $language);
+            $res = self::simpleCallCurl($google_url . '&gl=' . $user_country . $language);
 
             //Sino funciona probamos con us al menos que ya fuera us antes, en ese caso lo tiramos sin país a ver si cuela
-            if ($res['code'] != '200' && $country != 'us') {
-                $res = self::simpleCallCurl($url . '&gl=us&hl=en');
+            if ($res['code'] != '200' && $user_country != 'us') {
+                $res = self::simpleCallCurl($google_url . '&gl=us&hl=en');
                 //Si vuelve a fallar con us tiramos sin país a ver si cuela
                 if ($res['code'] != '200') {
-                    $res = self::simpleCallCurl($url);
+                    $res = self::simpleCallCurl($google_url);
                     if ($res['code'] != '200') {
-                        return [ 'status' => 0, 'data' => [], 'msg' => 'Error get data google play' ];
+                        return self::response(false, 'Error get data google play 1');
                     }
                 }
             } elseif ($res['code'] != '200') {
-                $res = self::simpleCallCurl($url . $language);
+                $res = self::simpleCallCurl($google_url . $language);
                 if ($res['code'] != '200') {
-                    return [ 'status' => 0, 'data' => [], 'msg' => 'Error get data google play' ];
+                    return self::response(false, 'Error get data google play 2');
                 }
             }
 
@@ -75,7 +80,9 @@
                 'num_votes'   => ''
             ];
 
-            if (preg_match('!id=.main-title.>(?<title>[^-–]+)(-|–)!sm', $res['content'], $m)) {
+            if (preg_match('!<meta itemprop=.name. content=.(?<title>[^\'\"]+).!sm', $res['content'], $m)) {
+                $data['title'] = trim($m['title']);
+            } elseif (preg_match('!id=.main-title.>(?<title>[^-–]+)(-|–)!sm', $res['content'], $m)) {
                 $data['title'] = trim($m['title']);
             } elseif (preg_match('!id=.main-title.>(?<title>(.*?)+)(-|–)!sm', $res['content'], $m)) {
                 $data['title'] = trim(str_replace('Google Play', '', $m['title']));
@@ -83,6 +90,12 @@
 
             if (preg_match('!meta name=.description. content=.(?<description>[^\'\"]+).!sm', $res['content'], $m)) {
                 $data['description'] = $m['description'];
+            }
+            elseif( preg_match('!itemprop=.description.><content><div jsname=.([^\'\"]+).>(?<description>.*?)<\/div>!sm', $res['content'], $m) ) {
+                $data['description'] = $m['description'];   
+            }
+            elseif( preg_match('!<div jsname="sngebd">(?<description>.*?)<\/div>!sm', $res['content'], $m) ) {
+                $data['description'] = $m['description'];   
             }
 
 
@@ -99,48 +112,49 @@
             }
 
             if (preg_match('!data-trailer-url=.(?<video>[^\'\"]+).!sm', $res['content'], $m)) {
-                $data['videos'] = $m['video'];
+                $data['video'] = $m['video'];
             }
 
             if (preg_match('!itemprop=.ratingValue. content=.(?<avg>[^\'\"]+).!sm', $res['content'], $m)) {
-                $data['avg'] = round(str_replace(',', '.', $m['avg']), 1);
+                $data['rank_avg'] = round(str_replace(',', '.', $m['avg']), 1);
             } elseif (preg_match('!<div class=.BHMmbe. aria-label=.[^\'\"]+.>(?<avg>[^\'\"]+)</div>!sm', $res['content'], $m)) {
-                $data['avg'] = round(str_replace(',', '.', $m['avg']), 1);
+                $data['rank_avg'] = round(str_replace(',', '.', $m['avg']), 1);
             }
 
             if (preg_match('!itemprop=.ratingCount. content=.(?<user_rating>[^\'\"]+).!sm', $res['content'], $m)) {
-                $data['num_votes'] = $m['user_rating'];
+                $data['rank_votes'] = $m['user_rating'];
             } elseif (preg_match('!<span class=.AYi5wd TBRnV.><span class=.. aria-label=.[^\'\"]+.>(?<user_rating>[^<]+)</span>!sm', $res['content'], $m)) {
-                $data['num_votes'] = str_replace(',', '', $m['user_rating']);
+                $data['rank_votes'] = str_replace([',', ' '], ['', ''], $m['user_rating']);
             }
+
 
             // Revisamos si se han rellenado todos los campos pq pueden haber cambiado algo
             if (empty($data['title']) || empty($data['description']) || empty($data['icon'])) {
-                return [ 'status' => 0, 'data' => $data, 'msg' => 'Empty data' ];
+                return self::response(false, 'Empty data');
             }
 
-            return [ 'status' => 1, 'data' => $data, 'msg' => 'Success' ];
+            return self::response(true, 'Success', $data);
         }
 
-        private static function dataItunes($url2, $country2)
+        private static function dataItunes($itunes_url, $user_country)
         {
             $bundle_id = '';
-            if (!preg_match('/id(?<bundle_id>[0-9]+)/', $url2, $m)) {
-                if (!preg_match('/id=(?<bundle_id>[0-9]+)/', $url2, $m)) {
-                    return [ 'status' => 0, 'data' => [], 'msg' => 'Error get bundle id itunes' ];
+            if (!preg_match('/id=(?<bundle_id>[0-9]+)/', $itunes_url, $m)) {
+                if (!preg_match('/id(?<bundle_id>[0-9]+)/', $itunes_url, $m)) {
+                    return self::response(false, 'Error get bundle id itunes');
                 }
             }
             
             $bundle_id = $m['bundle_id'];
 
-            $url = 'http://ax.itunes.apple.com/WebObjects/MZStoreServices.woa/wa/wsLookup?id=' . $bundle_id;
+            $url = self::API_ITUNES . $bundle_id;
 
-            $res = self::simpleCallCurl($url . '&country=' . $country2);
+            $res = self::simpleCallCurl($url . '&country=' . $user_country);
             $content = json_decode($res['content'], 1);
 
             if (!isset($content['resultCount']) || $content['resultCount'] < 1) {
                 $country = 'us';
-                if (preg_match('|\/(?<country>[A-Za-z]{2})\/|', $url2, $m)) {
+                if (preg_match('|\/(?<country>[A-Za-z]{2})\/|', $itunes_url, $m)) {
                     $country = $m['country'];
                 }
 
@@ -148,7 +162,7 @@
                     $country = 'us';
                 }
 
-                if ($country != $country2) {
+                if ($country != $user_country) {
                     $res = self::simpleCallCurl($url . '&country=' . $country);
                 } else {
                     $res = self::simpleCallCurl($url);
@@ -163,16 +177,16 @@
             }
 
             if (!isset($content['resultCount']) || $content['resultCount'] < 1) {
-                return [ 'status' => 0, 'data' => [], 'msg' => 'Error get api id' ];
+                return self::response(false, 'Error get api id');
             }
             if ($content['results'][0]['wrapperType'] !== 'software') {
-                return [ 'status' => 0, 'data' => [], 'msg' => 'Error bundle no software' ];
+                return self::response(false, 'Error bundle, no software');
             }
 
             $info = $content['results'][0];
 
             if (!isset($info['averageUserRating'])) {
-                $url = 'http://ax.itunes.apple.com/WebObjects/MZStoreServices.woa/wa/wsLookup?id=' . $bundle_id;
+                $url = self::API_ITUNES . $bundle_id;
                 $res = self::simpleCallCurl($url);
                 $content = json_decode($res['content'], 1);
                 $info['averageUserRating'] = isset($content['results'][0]['averageUserRating']) ? $content['results'][0]['averageUserRating'] : 0;
@@ -191,7 +205,7 @@
                 'num_votes'     => $info['userRatingCount']
             ];
 
-            return [ 'status' => 1, 'data' => $data, 'msg' => 'Success' ];
+            return self::response(true, 'Success', $data);
         }
 
         private static function simpleCallCurl($url) 
@@ -199,17 +213,23 @@
             $ch = curl_init();
 
             curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:61.0) Gecko/20100101 Firefox/61.0');
+            curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:67.0) Gecko/20100101 Firefox/67.0');
             curl_setopt($ch, CURLOPT_HEADER, 0);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, 100);
          
             $data['content'] = curl_exec($ch);
             $data['info'] = curl_getinfo($ch);
+
             $data['code'] = $data['info']['http_code'];
          
             curl_close($ch);
          
             return $data;
+        }
+
+        private static function response($status = false, $msg = '', $data = []) {
+            return ['status' => $status, 'data' => $data, 'msg' => $msg];
+
         }
     }

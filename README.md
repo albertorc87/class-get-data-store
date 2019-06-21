@@ -1,6 +1,6 @@
-# Store Info
+# MARKET APP INFO
 
-The class get the info more important of an app from google play or itunes by url app.
+The class get the info more important of an app from google play or itunes by the url of the app.
 
 ## Return info
 
@@ -24,5 +24,5 @@ php test_store.php https://play.google.com/store/apps/details?id=com.easybrain.s
 ```
 For itunes: 
 ```
-php test_store.php https://itunes.apple.com/es/app/hello-stars/id1403455040?mt=8&v0=WWW-EUES-ITSTOP100-FREEAPPS&l=es&ign-mpt=uo%3D4
+php test_store.php "https://apps.apple.com/es/app/hello-stars/id1403455040?mt=8&v0=WWW-EUES-ITSTOP100-FREEAPPS&l=es&ign-mpt=uo%3D4"
 ```
